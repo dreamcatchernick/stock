@@ -30,7 +30,10 @@ export function filterStockList(options, stockList) {
         let filteredStockList = _.cloneDeep(stockList);
         if(options.indexOf('pe') > -1) {
             filteredStockList = _.filter(filteredStockList ,(stock) => {
-                return (stock.pe_jing <= 50.0 && stock.pe_dong <= 100.0);
+                if(parseFloat(stock.pe_jing) && parseFloat(stock.pe_dong)) {
+                    return (stock.pe_jing <= 50.0 && stock.pe_dong <= 100.0);
+                }
+                return true;
             });
         }
         if(options.indexOf('size') > -1) {
