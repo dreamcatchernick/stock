@@ -2,6 +2,7 @@ import React from 'react';
 import { Layout } from 'antd';
 import Concept from './concept';
 import Stock from './stock';
+import {Route, HashRouter} from 'react-router-dom';
 const { Header, Content, Footer} = Layout;
 
 
@@ -19,7 +20,14 @@ export class Main extends React.Component{
         return (
             <Layout>
                 <Header style={headerStyle}>选股器</Header>
-                <Layout><Content><Stock/></Content></Layout>
+                <Layout>
+                    <HashRouter>
+                        <Content>
+                                <Route exact path="/" component={Concept}/>
+                                <Route path="/stocks/:conceptId" component={Stock}/>
+                        </Content>
+                    </HashRouter>
+                </Layout>
             </Layout>
         );
     }

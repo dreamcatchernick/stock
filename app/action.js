@@ -4,7 +4,7 @@ import _ from 'lodash';
 export function loadConceptList() {
     return (dispatch) => {
         axios.get('/getlist').then((response) => {
-            console.log(response.data);
+            //console.log(response.data);
             dispatch({
                 type: 'LOAD_CONCEPT_LIST',
                 payload: response.data
@@ -16,7 +16,7 @@ export function loadConceptList() {
 export function loadStockList(conceptId) {
     return (dispatch) => {
         axios.get(`/getstocks/${conceptId}`).then((response) => {
-            console.log(response.data);
+            //console.log(response.data);
             dispatch({
                 type: 'LOAD_STOCK_LIST',
                 payload: response.data

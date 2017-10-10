@@ -9,6 +9,7 @@ const CheckboxGroup = Checkbox.Group;
 
 function mapStateToProps(store) {
     return {
+        conceptList: store.stockReducer.conceptList,
         stockList: store.stockReducer.stockList,
         filteredStockList: store.stockReducer.filteredStockList,
     };
@@ -25,6 +26,8 @@ const options = [
     { label: '主力', value: 'main' },
 ];
 
+let title = '';
+
 
 export class Stock extends React.Component{
     constructor(){
@@ -33,7 +36,13 @@ export class Stock extends React.Component{
     }
 
     componentWillMount(){
-        this.props.dispatch(loadStockList(7));
+        const conceptId = this.props.match.params.conceptId;
+        const concept = _.find(this.props.conceptList , (concept) => {
+            return concept.id == conceptId;
+        });
+        //console.log(concept);
+        title = concept.name;
+        this.props.dispatch(loadStockList(conceptId));
     }
 
     onChange(checkedValues){
@@ -56,7 +65,7 @@ export class Stock extends React.Component{
         return (
             <div>
                 <div style={{ padding: '30px' }}>
-                    <h1>玻璃概念</h1>
+                    <h1>{title}</h1>
                 </div>
                 <div style={{ padding: '30px' }}>
                     <CheckboxGroup options={options} onChange={this.onChange} />

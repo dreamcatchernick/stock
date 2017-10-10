@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card } from 'antd';
 import {connect} from 'react-redux';
+import {Link} from 'react-router-dom';
+
 import {
     loadConceptList
 } from './action';
@@ -26,10 +28,10 @@ export class Concept extends React.Component{
     }
 
     render() {
-        // const conceptList = this.props.conceptList.map((item ,index) => {
-        //     return <Card.Grid style={gridStyle} key={item.id}><a href="#">{item.name}</a></Card.Grid>
-        // });
-        const conceptList = <Card.Grid style={gridStyle} key="1"><a href="#">测试</a></Card.Grid>;
+        const conceptList = this.props.conceptList.map((item ,index) => {
+            return <Card.Grid style={gridStyle} key={item.id}><Link to={`/stocks/${item.id}`}>{item.name}</Link></Card.Grid>
+        });
+
         return (
             <Card title="概念" noHovering>
                 {conceptList}
