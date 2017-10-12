@@ -41,7 +41,7 @@ repository.cleanConcept().then(() => {
     common.getConceptList().then((conceptList) => {
         for(let i =0 ; i< conceptList.length ; i++) {
             const concept = conceptList[i];
-            console.log(concept);
+            repository.insertConcept(concept);
             setTimeout(()=> {
                 common.getStockList(concept.href , concept.id).then((stockDetailPromiseList) => {
                     Promise.all(stockDetailPromiseList).then((stockDetailList) => {
@@ -51,7 +51,7 @@ repository.cleanConcept().then(() => {
                         })
                     });
                 });
-                console.log('should wait for' + i * 7000);
+                console.log(`should wait for ${concept.name} ` + i * 7);
             }, i * 7000);
         }
     });
