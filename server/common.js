@@ -14,7 +14,7 @@ function getConceptList() {
                 const gn = $('.category').eq(2);
                 const gnItemList = gn.find($('.c_content > div a'));
                 for(let i = 0 ; i<gnItemList.length; i++) {
-                    conceptList.push({id:i+1, name: gnItemList[i].attribs.title , href:gnItemList[i].attribs.href})
+                    conceptList.push({conceptId:i+1, name: gnItemList[i].attribs.title , href:gnItemList[i].attribs.href})
                 }
                 resolve(conceptList);
             });

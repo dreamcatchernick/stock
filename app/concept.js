@@ -29,7 +29,7 @@ export class Concept extends React.Component{
 
     render() {
         const conceptList = this.props.conceptList.map((item ,index) => {
-            return <Card.Grid style={gridStyle} key={item.id}><Link to={`/stocks/${item.id}`}>{item.name}</Link></Card.Grid>
+            return <Card.Grid style={gridStyle} key={item.conceptId}><Link to={`/stocks/${item.conceptId}`}>{item.name}</Link></Card.Grid>
         });
 
         return (

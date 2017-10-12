@@ -38,25 +38,25 @@ const repository = require('./repository');
 //         });
 // });
 
-// common.getConceptList().then((conceptList) => {
-//     repository.cleanConcept().then(() => {
-//         for(let i =0 ; i< conceptList.length ; i++) {
-//             const concept = conceptList[i];
-//             console.log(concept);
-//             setTimeout(()=> {
-//                 common.getStockList(concept.href , concept.id).then((stockDetailPromiseList) => {
-//                     Promise.all(stockDetailPromiseList).then((stockDetailList) => {
-//                         //console.log(stockDetailList);
-//                         _.each(stockDetailList ,(stock) => {
-//                             repository.insertStock(stock);
-//                         })
-//                     });
-//                 });
-//                 //console.log('should wait for' + i * 2000);
-//             }, i * 4000);
-//         }
-//     });
-// });
+common.getConceptList().then((conceptList) => {
+    repository.cleanConcept().then(() => {
+        for(let i =0 ; i< conceptList.length ; i++) {
+            const concept = conceptList[i];
+            console.log(concept);
+            setTimeout(()=> {
+                common.getStockList(concept.href , concept.id).then((stockDetailPromiseList) => {
+                    Promise.all(stockDetailPromiseList).then((stockDetailList) => {
+                        //console.log(stockDetailList);
+                        _.each(stockDetailList ,(stock) => {
+                            repository.insertStock(stock);
+                        })
+                    });
+                });
+                //console.log('should wait for' + i * 2000);
+            }, i * 5000);
+        }
+    });
+});
 
 // common.getConceptList().then((conceptList) => {
 //     repository.cleanConcept().then(() => {

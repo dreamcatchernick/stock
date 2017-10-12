@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const isProduction = process.env.NODE_ENV === 'production';
-const connectionString = isProduction ? process.env.MONGODB_URL : 'mongodb://localhost/stock';
+const connectionString = 'mongodb://localhost/stock';
+//const connectionString = 'mongodb://116.62.116.129/stock';
 
 
 mongoose.Promise = global.Promise;
