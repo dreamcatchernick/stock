@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const iconv = require('iconv-lite');
 const http = require('http');
+const syncrequest = require('sync-request');
 
 const baseUri = 'http://basic.10jqka.com.cn';
 
@@ -13,7 +14,7 @@ function getConceptList() {
                 const gn = $('.category').eq(2);
                 const gnItemList = gn.find($('.c_content > div a'));
                 for(let i = 0 ; i<gnItemList.length; i++) {
-                    conceptList.push({id:i, name: gnItemList[i].attribs.title , href:gnItemList[i].attribs.href})
+                    conceptList.push({id:i+1, name: gnItemList[i].attribs.title , href:gnItemList[i].attribs.href})
                 }
                 resolve(conceptList);
             });
@@ -22,7 +23,7 @@ function getConceptList() {
 }
 
 
-function getStockList(subUri) {
+function getStockList(subUri , conceptId) {
     const stockListUri = `${baseUri}${subUri}`;
     return new Promise((resolve , reject) => {
         http.get(stockListUri, function(res) {
@@ -34,7 +35,7 @@ function getStockList(subUri) {
                     const stockLink = stockList[i].attribs.href;
                     //if stock link has A mean the stock is new
                     if(stockLink.indexOf('A') == -1) {
-                        stockDetailList.push(getStockInfo(stockLink));
+                        stockDetailList.push(getStockInfo(stockLink , conceptId));
                     }
                 }
                 resolve(stockDetailList);
@@ -43,7 +44,7 @@ function getStockList(subUri) {
     })
 }
 
-function getStockInfo(stockCode) {
+function getStockInfo(stockCode , conceptId) {
     const stockUri = `${baseUri}/${stockCode}/`;
     return new Promise((resolve , reject) => {
         http.get(stockUri, function(res) {
@@ -75,6 +76,7 @@ function getStockInfo(stockCode) {
                 const main_control = stockMain.text().replace(/(?:\r\n|\r|\n|\t|\s)/g, '');
 
                 const stockInfo = {
+                    conceptId: conceptId,
                     stockTitle: stockTitle ,
                     pe_dong: pe_dong,
                     pe_jing : pe_jing,
