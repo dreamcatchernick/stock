@@ -52,7 +52,7 @@ common.getConceptList().then((conceptList) => {
                         })
                     });
                 });
-                //console.log('should wait for' + i * 2000);
+                console.log('should wait for' + i * 6000);
             }, i * 6000);
         }
     });
