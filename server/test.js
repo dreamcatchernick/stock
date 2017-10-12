@@ -37,9 +37,8 @@ const repository = require('./repository');
 //             // Handle errors here
 //         });
 // });
-
-common.getConceptList().then((conceptList) => {
-    repository.cleanConcept().then(() => {
+repository.cleanConcept().then(() => {
+    common.getConceptList().then((conceptList) => {
         for(let i =0 ; i< conceptList.length ; i++) {
             const concept = conceptList[i];
             console.log(concept);
@@ -52,11 +51,12 @@ common.getConceptList().then((conceptList) => {
                         })
                     });
                 });
-                console.log('should wait for' + i * 6000);
-            }, i * 6000);
+                console.log('should wait for' + i * 7000);
+            }, i * 7000);
         }
     });
 });
+
 
 // common.getConceptList().then((conceptList) => {
 //     repository.cleanConcept().then(() => {
