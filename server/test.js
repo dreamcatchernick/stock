@@ -53,7 +53,7 @@ common.getConceptList().then((conceptList) => {
                     });
                 });
                 //console.log('should wait for' + i * 2000);
-            }, i * 5000);
+            }, i * 6000);
         }
     });
 });
