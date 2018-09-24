@@ -1,0 +1,247 @@
+//+------------------------------------------------------------------+
+//|                                                         nick.mq4 |
+//|                                                             Nick |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Nick"
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+#property strict
+
+//--- Inputs
+input double RiskLotUnit         = 0.1;
+input double RiskPips            = 100;
+input double TpPipsUnit          = 100;
+input string TradingSymbol       = "AUDCAD";
+input int    MaxPostion          = 7;
+input double UpperBound          = 1.0;
+input double LowerBound          = 0.96;
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+
+double LastestBuyPrice           = 0.0;
+double LastestSellPrice          = 0.0;
+double NextBuyPrice              = 0.0;
+double NextSellPrice             = 0.0;
+bool IsBuyArea                   = false;
+bool IsSellArea                  = false;
+int CurrentOrderTicketNumber     = 0;
+
+int OnInit(){
+
+   Print("EA started");
+   UpdateLastestPrice();
+   TriggerDefendingPosition();
+   return(INIT_SUCCEEDED);
+}
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason) {
+   
+   Print("EA closed!");
+}
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick(){
+   UpdateLastestPrice();
+   TriggerDefendingPosition();
+   if(LastestBuyPrice < LowerBound) {
+      TriggerBuyAttackPosition();
+   } 
+   if(LastestSellPrice > UpperBound) {
+      TriggerSellAttackPosition();
+   }
+   if(IsSellArea) {
+      CheckSellTakeProfit();    
+   }
+   if(IsBuyArea) {
+      CheckBuyTakeProfit();
+   }
+   
+}
+
+//+------------------------------------------------------------------+
+
+ 
+
+//+------------------------------------------------------------------+
+//| Helper function
+//+------------------------------------------------------------------+
+
+void UpdateLastestPrice() {
+   MqlTick lastPrice;
+   SymbolInfoTick(TradingSymbol , lastPrice);
+   LastestBuyPrice = lastPrice.ask;
+   LastestSellPrice = lastPrice.bid;
+}
+
+void TriggerDefendingPosition() {
+   if(OrdersTotal() == 0) {
+      if(LastestBuyPrice < LowerBound) {   
+         BuyDefending();
+      } else if(LastestSellPrice > UpperBound) {
+         SellDefending();
+      } else {
+         //Print("Not in trading area, wait for next tick"); 
+         return;
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Buy function
+//+------------------------------------------------------------------+
+
+void TriggerBuyAttackPosition() {
+   if(OrdersTotal() < MaxPostion) {
+      if(LastestBuyPrice < NextBuyPrice ) {
+         //buy one if the remaining position is even number
+         if(OrdersTotal() % 2 == 0) {
+            Buy(1);
+         }else{
+            Buy(2);
+         }       
+      }
+   }
+}
+
+void CheckBuyTakeProfit() {
+   for(int i = 0; i< OrdersTotal(); i++) {
+      OrderSelect(i, SELECT_BY_POS , MODE_TRADES);
+      if(OrderMagicNumber() == 123) {
+         //Print("this is defending line!");
+      } else {
+         double tpPrice = OrderOpenPrice() + (OrderMagicNumber() * TpPipsUnit / 10000);
+         if(LastestSellPrice > tpPrice) {
+            if(! OrderClose(OrderTicket(), OrderLots() , OrderClosePrice() , 3)) {
+               Print("Order close failed, order numer: ", OrderTicket());
+            }
+            if(OrdersTotal() % 2 == 0) {
+               NextBuyPrice = NextBuyPrice + (RiskPips / 10000);
+            }
+            
+            //Print("NextBuyPrice"+NextBuyPrice);    
+         }
+      }
+   }
+}
+
+
+void BuyDefending() {
+   CurrentOrderTicketNumber = OrderSend(TradingSymbol,
+                                    OP_BUY,
+                                    RiskLotUnit,
+                                    LastestBuyPrice,
+                                    3,
+                                    0,
+                                    UpperBound,
+                                    "buy",
+                                    123,
+                                    0,
+                                    Green);   
+   NextBuyPrice = LastestBuyPrice - (RiskPips / 10000);
+   IsBuyArea = true;
+   IsSellArea = false;
+}
+
+void Buy(int count) {
+   for(int i = 0; i< count; i++) {
+         int tpFactor = i+1;
+         CurrentOrderTicketNumber = OrderSend(TradingSymbol,
+                                       OP_BUY,
+                                       RiskLotUnit,
+                                       LastestBuyPrice,
+                                       3,
+                                       0,
+                                       0,
+                                       "buy",
+                                       tpFactor,
+                                       0,
+                                       Green);                              
+         
+   }
+   NextBuyPrice = NextBuyPrice - (RiskPips / 10000);                              
+   //Print("CurrentOrderTicketNumber" + CurrentOrderTicketNumber);
+   //Print("NextBuyPrice" + NextBuyPrice);
+   //Print("CurrentRiskLevel" + CurrentRiskLevel);
+}
+
+//+------------------------------------------------------------------+
+//| Sell function
+//+------------------------------------------------------------------+
+
+
+void TriggerSellAttackPosition() {
+   if(OrdersTotal() < MaxPostion) {
+      if(LastestSellPrice > NextSellPrice ) {
+         //buy one if the remaining position is even number
+         if(OrdersTotal() % 2 == 0) {
+            Sell(1);
+         }else{
+            Sell(2);
+         }       
+      }
+   }
+}
+
+void CheckSellTakeProfit() {
+   for(int i = 0; i< OrdersTotal(); i++) {
+      OrderSelect(i, SELECT_BY_POS , MODE_TRADES);
+      if(OrderMagicNumber() == 123) {
+         //Print("this is defending line!");
+      } else {
+         double tpPrice = OrderOpenPrice() - (OrderMagicNumber() * TpPipsUnit / 10000);
+         if(LastestBuyPrice < tpPrice) {
+            if(! OrderClose(OrderTicket(), OrderLots() , OrderClosePrice() , 3)) {
+               Print("Order close failed, order numer: ", OrderTicket());
+            }
+            if(OrdersTotal() % 2 == 0) {
+               NextSellPrice = NextSellPrice - (RiskPips / 10000);
+            }
+
+            //Print("NextBuyPrice"+NextBuyPrice);    
+         }
+      }
+   }
+}
+
+void SellDefending() {
+   CurrentOrderTicketNumber = OrderSend(TradingSymbol,
+                                       OP_SELL,
+                                       RiskLotUnit,
+                                       LastestSellPrice,
+                                       3,
+                                       0,
+                                       LowerBound,
+                                       "sell",
+                                       123,
+                                       0,
+                                       Green);   
+   NextSellPrice = LastestSellPrice + (RiskPips / 10000);
+   IsSellArea = true;
+   IsBuyArea = false;
+}
+
+void Sell(int count) {
+   for(int i=0; i< count; i++) {
+      int tpFactor = i+1;
+      CurrentOrderTicketNumber = OrderSend(TradingSymbol,
+                                          OP_SELL,
+                                          RiskLotUnit,
+                                          LastestSellPrice,
+                                          3,
+                                          0,
+                                          0,
+                                          "sell",
+                                          tpFactor,
+                                          0,
+                                          Green);
+   }
+
+   NextSellPrice = NextSellPrice + (RiskPips / 10000); 
+   //Print("NextSellPrice" + NextSellPrice);
+   //Print("CurrentOrderTicketNumber" + CurrentOrderTicketNumber);
+}
