@@ -1,0 +1,164 @@
+//+------------------------------------------------------------------+
+//|                                                         shua.mq4 |
+//|                                                             Nick |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Nick"
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+#property strict
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+input string TradingSymbol       = "EURUSD";
+input double RiskLotUnit         = 0.1;
+input double SLPips             = 0.0005;
+input double TPPips             = 0.0003;
+input double RiskPips           = 0.00015;
+
+
+double LastestBuyPrice           = 0.0;
+double LastestSellPrice          = 0.0;
+
+int OnInit()
+  {
+//---
+   
+//---
+   return(INIT_SUCCEEDED);
+  }
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+//---
+   
+  }
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+   UpdateLastestPrice();
+   double ema21 = iMA(TradingSymbol, PERIOD_M5, 21, 0, MODE_EMA, PRICE_MEDIAN, 0);
+   double ema13 = iMA(TradingSymbol, PERIOD_M5, 13, 0, MODE_EMA, PRICE_MEDIAN, 0);
+   double ema8 = iMA(TradingSymbol, PERIOD_M5, 8, 0, MODE_EMA, PRICE_MEDIAN, 0);
+   
+   double ema8_ema13 = ema8 - ema13;
+   double ema13_ema21 = ema13 - ema21;
+   double ema8_ema21 = ema8 - ema21;
+   //Print("ema21: " + NormalizeDouble(ema21 , 5) + " ema13 " + NormalizeDouble(ema13 , 5) + " ema8: " + NormalizeDouble(ema8 , 5 ));
+   //Print("ema8_ema13: " + NormalizeDouble(ema8_ema13 , 6) + " ema13_ema21 " + NormalizeDouble(ema13_ema21 , 6) + " ema8_ema21: " + NormalizeDouble(ema8_ema21 , 6 ));
+      //CheckForBuy(ema8_ema13 , ema13_ema21 , ema21);
+      //CheckForSell(ema8_ema13 , ema13_ema21,ema21);
+
+   
+
+  }
+//+------------------------------------------------------------------+
+void UpdateLastestPrice() {
+   MqlTick lastPrice;
+   SymbolInfoTick(TradingSymbol , lastPrice);
+   LastestBuyPrice = lastPrice.ask;
+   LastestSellPrice = lastPrice.bid;
+}
+
+void CheckForBuy(double ema8_ema13 , double ema13_ema21 , double ema21) {
+   //Clear
+   if(ema8_ema13 > 0.00002 && ema13_ema21 > 0.000015) {
+   
+      double rsi = iRSI(TradingSymbol, PERIOD_M1, 14, PRICE_MEDIAN ,0);
+      double openPrice = iOpen(TradingSymbol, PERIOD_M1, 0);
+      if(OrdersTotal() == 0) {
+            if(CheckBuyCondition(rsi,openPrice,ema21 )) {
+               double slprice = LastestBuyPrice - SLPips;
+               double tpprice = LastestBuyPrice + TPPips;
+               OrderSend(TradingSymbol,
+                     OP_BUY,
+                     RiskLotUnit,
+                     LastestBuyPrice,
+                     3,
+                     slprice,
+                     tpprice,
+                     "buy",
+                     0,
+                     0,
+                     Green);  
+            }
+
+      }
+      if(rsi > 70 && OrdersTotal() > 0) {
+         //CloseAllOrders();
+      }
+                   
+   } else {
+      if(OrdersTotal() > 0) {
+         CloseAllOrders();
+      }
+   }
+}
+
+void CheckForSell(double ema8_ema13 , double ema13_ema21 , double ema21) {
+   if(ema8_ema13 > 0.00002 && ema13_ema21 > 0.000015) {
+   
+      double rsi = iRSI(TradingSymbol, PERIOD_M1, 14, PRICE_MEDIAN ,0);
+      double openPrice = iOpen(TradingSymbol, PERIOD_M1, 0);
+      if(OrdersTotal() == 0) {
+            if(CheckBuyCondition(rsi,openPrice,ema21 )) {
+               double slprice = LastestSellPrice + SLPips;
+               double tpprice = LastestSellPrice - TPPips;
+               OrderSend(TradingSymbol,
+                     OP_SELL,
+                     RiskLotUnit,
+                     LastestSellPrice,
+                     3,
+                     slprice,
+                     tpprice,
+                     "sell",
+                     0,
+                     0,
+                     Green);  
+            }
+
+      }
+      if(rsi > 70 && OrdersTotal() > 0) {
+         //CloseAllOrders();
+      }
+                   
+   } else {
+      if(OrdersTotal() > 0) {
+         CloseAllOrders();
+      }
+   }
+}
+
+void CloseAllOrders() {
+   for(int i = 0; i< OrdersTotal(); i++) {
+      OrderSelect(i, SELECT_BY_POS , MODE_TRADES);
+      if(OrderType() == OP_BUYLIMIT) {
+         if(!OrderDelete(OrderTicket())) {
+            Print("Order delete failed, order numer: ", OrderTicket());
+         }
+      } else {
+         if(!OrderClose(OrderTicket(), OrderLots() , OrderClosePrice() , 3)) {
+            Print("Order close failed, order numer: ", OrderTicket());
+         }
+      } 
+
+   }
+}
+
+bool CheckBuyCondition(double rsi , double openPrice , double ema21) {
+
+   //RSI should not higher than 64, means not over buy
+   //Print("RSI: " + rsi);
+   if(rsi < 64) {
+      //open price should not below ema21
+      if(openPrice > ema21) {
+         return true; 
+      }
+      return false;
+   }
+   return false;
+}
