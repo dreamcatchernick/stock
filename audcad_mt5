@@ -1,0 +1,305 @@
+//+------------------------------------------------------------------+
+//|                                                       audcad.mq5 |
+//|                        Copyright 2018, MetaQuotes Software Corp. |
+//|                                             https://www.mql5.com |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2018, MetaQuotes Software Corp."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+
+
+//+------------------------------------------------------------------+
+//| Inputs                                                           |
+//+------------------------------------------------------------------+
+
+input double RiskLotUnit         = 0.1;
+input double RiskPips            = 100;
+input double TpPipsUnit          = 100;
+input string TradingSymbol       = "AUDCAD";
+input int    MaxPostion          = 7;
+input double UpperBound          = 1.0;
+input double LowerBound          = 0.97;
+
+//+------------------------------------------------------------------+
+//| Private                                                           |
+//+------------------------------------------------------------------+
+
+double LastestBuyPrice           = 0.0;
+double LastestSellPrice          = 0.0;
+double NextBuyPrice              = 0.0;
+double NextSellPrice             = 0.0;
+bool IsBuyArea                   = false;
+bool IsSellArea                  = false;
+int CurrentOrderTicketNumber     = 0;
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit() {
+
+   Print("EA started");
+   UpdateLastestPrice();
+   InitDefendingPosition();
+   return(INIT_SUCCEEDED);
+}
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason){
+
+   Print("EA closed!");
+}
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick(){
+
+   UpdateLastestPrice();
+   InitDefendingPosition();
+   if(LastestBuyPrice < LowerBound) {
+      ContinueBuyDefendingPosition();
+   }   
+   if(LastestSellPrice > UpperBound) {
+      ContinueSellDefendingPosition();
+   }
+   if(IsBuyArea) {
+      CheckBuyTakeProfit();
+   }
+   if(IsSellArea){
+      CheckSellTakeProfit();
+   }
+}
+//+------------------------------------------------------------------+
+
+
+void UpdateLastestPrice() {
+   MqlTick lastPrice;
+   SymbolInfoTick(TradingSymbol , lastPrice);
+   LastestBuyPrice = lastPrice.ask;
+   LastestSellPrice = lastPrice.bid;
+   //Print("LastestBuyPrice:" + LastestBuyPrice);
+   //Print("LastestSellPrice:" + LastestSellPrice);
+}
+
+void InitDefendingPosition() {
+   if(PositionsTotal() == 0) {
+      if(LastestBuyPrice < LowerBound) { 
+         InitBuy();
+      } else if(LastestSellPrice > UpperBound) {
+         InitSell();
+      } else {
+         Print("Not in trading area, wait for next tick"); 
+         return;
+      }
+   }
+}
+
+void ContinueBuyDefendingPosition() {
+   if(PositionsTotal() < MaxPostion) {
+      if(LastestBuyPrice < NextBuyPrice ) {
+         //buy one if the remaining position is even number
+         if(PositionsTotal() % 2 == 0) {
+            ContinueBuy(1);
+         }else{
+            ContinueBuy(2);
+         }       
+      }
+   }
+}
+
+void ContinueSellDefendingPosition() {
+   if(PositionsTotal() < MaxPostion) {
+      if(LastestSellPrice > NextSellPrice ) {
+         //sell one if the remaining position is even number
+         if(PositionsTotal() % 2 == 0) {
+            ContinueSell(1);
+         }else{
+            ContinueSell(2);
+         }       
+      }
+   }
+
+
+}
+
+//+------------------------------------------------------------------+
+//| Buy function
+//+------------------------------------------------------------------+
+
+
+void InitBuy() {
+   MqlTradeRequest request={0};
+   MqlTradeResult  result={0};
+   request.action    = TRADE_ACTION_DEAL;
+   request.symbol    = TradingSymbol;
+   request.volume    = RiskLotUnit;  
+   request.type      = ORDER_TYPE_BUY;
+   request.price     = LastestBuyPrice;
+   request.deviation = 10;
+   request.magic     = 123;
+   request.tp        = UpperBound;       
+
+   if(!OrderSend(request,result)) {
+      PrintFormat("OrderSend error %d",GetLastError());     // if unable to send the request, output the error code
+   }
+   PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);   
+   NextBuyPrice = LastestBuyPrice - (RiskPips / 10000);
+   IsBuyArea = true;
+   IsSellArea = false;
+}
+
+
+void ContinueBuy(int count) {
+   for(int i = 0; i< count; i++) {
+         int tpFactor = i+1;
+         MqlTradeRequest request={0};
+         MqlTradeResult  result={0};
+         request.action    = TRADE_ACTION_DEAL;
+         request.symbol    = TradingSymbol;
+         request.volume    = RiskLotUnit;  
+         request.type      = ORDER_TYPE_BUY;
+         request.price     = LastestBuyPrice;
+         request.deviation = 10;
+         request.magic     = tpFactor;
+         if(!OrderSend(request,result)) {
+            PrintFormat("OrderSend error %d",GetLastError());     // if unable to send the request, output the error code
+         }
+         PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);                             
+         
+   }
+   NextBuyPrice = NextBuyPrice - (RiskPips / 10000);                              
+   //Print("CurrentOrderTicketNumber" + CurrentOrderTicketNumber);
+   //Print("NextBuyPrice" + NextBuyPrice);
+   //Print("CurrentRiskLevel" + CurrentRiskLevel);
+}
+
+void CheckBuyTakeProfit() {
+   for(int i = 0; i< PositionsTotal(); i++) {
+      ulong  position_ticket = PositionGetTicket(i); // ticket of the position
+      long magic_number = PositionGetInteger(POSITION_MAGIC);
+      string position_symbol = PositionGetString(POSITION_SYMBOL);
+      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+      double volume = PositionGetDouble(POSITION_VOLUME);
+      if(magic_number == 123) {
+         //Print("this is defending line!");
+      } else {
+         double tpPrice = openPrice + (magic_number * TpPipsUnit / 10000);
+         if(LastestSellPrice > tpPrice) {
+
+            MqlTradeRequest request={0};
+            MqlTradeResult  result={0};
+            //--- setting the operation parameters
+            request.action   = TRADE_ACTION_DEAL;        // type of trade operation
+            request.position = position_ticket;          // ticket of the position
+            request.symbol   = position_symbol;          // symbol 
+            request.volume   = volume;                   // volume of the position
+            request.deviation= 5;                        // allowed deviation from the price
+            request.magic    = magic_number;             // MagicNumber of the position
+            request.price    = LastestSellPrice;
+            request.type     = ORDER_TYPE_SELL;
+            
+            if(!OrderSend(request,result)){
+               PrintFormat("OrderSend error %d",GetLastError());  // if unable to send the request, output the error code
+            }
+            PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);
+            
+            if(PositionsTotal() % 2 == 0) {
+               NextBuyPrice = NextBuyPrice + (RiskPips / 10000);
+            }
+            
+            //Print("NextBuyPrice"+NextBuyPrice);    
+         }     
+      }
+   }
+}
+
+
+
+//+------------------------------------------------------------------+
+//| Sell function
+//+------------------------------------------------------------------+
+
+void InitSell() {
+   MqlTradeRequest request={0};
+   MqlTradeResult  result={0};
+   request.action    = TRADE_ACTION_DEAL;
+   request.symbol    = TradingSymbol;
+   request.volume    = RiskLotUnit;  
+   request.type      = ORDER_TYPE_SELL;
+   request.price     = LastestSellPrice;
+   request.deviation = 10;
+   request.magic     = 123;
+   request.tp        = LowerBound;       
+
+   if(!OrderSend(request,result)) {
+      PrintFormat("OrderSend error %d",GetLastError());     // if unable to send the request, output the error code
+   }
+   PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);   
+   NextSellPrice = LastestSellPrice + (RiskPips / 10000);
+   IsBuyArea = false;
+   IsSellArea = true;
+}
+
+void ContinueSell(int count) {
+   for(int i = 0; i< count; i++) {
+         int tpFactor = i+1;
+         MqlTradeRequest request={0};
+         MqlTradeResult  result={0};
+         request.action    = TRADE_ACTION_DEAL;
+         request.symbol    = TradingSymbol;
+         request.volume    = RiskLotUnit;  
+         request.type      = ORDER_TYPE_SELL;
+         request.price     = LastestSellPrice;
+         request.deviation = 10;
+         request.magic     = tpFactor;
+         if(!OrderSend(request,result)) {
+            PrintFormat("OrderSend error %d",GetLastError());     // if unable to send the request, output the error code
+         }
+         PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);                             
+         
+   }
+   NextSellPrice = LastestSellPrice + (RiskPips / 10000);                   
+   //Print("CurrentOrderTicketNumber" + CurrentOrderTicketNumber);
+   //Print("NextBuyPrice" + NextBuyPrice);
+   //Print("CurrentRiskLevel" + CurrentRiskLevel);
+}
+
+void CheckSellTakeProfit() {
+   for(int i = 0; i< PositionsTotal(); i++) {
+      ulong  position_ticket = PositionGetTicket(i); // ticket of the position
+      long magic_number = PositionGetInteger(POSITION_MAGIC);
+      string position_symbol = PositionGetString(POSITION_SYMBOL);
+      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+      double volume = PositionGetDouble(POSITION_VOLUME);
+      if(magic_number == 123) {
+         //Print("this is defending line!");
+      } else {
+         double tpPrice = openPrice - (magic_number * TpPipsUnit / 10000);
+         if(LastestBuyPrice < tpPrice) {
+
+            MqlTradeRequest request={0};
+            MqlTradeResult  result={0};
+            //--- setting the operation parameters
+            request.action   = TRADE_ACTION_DEAL;        // type of trade operation
+            request.position = position_ticket;          // ticket of the position
+            request.symbol   = position_symbol;          // symbol 
+            request.volume   = volume;                   // volume of the position
+            request.deviation= 5;                        // allowed deviation from the price
+            request.magic    = magic_number;             // MagicNumber of the position
+            request.price    = LastestBuyPrice;
+            request.type     = ORDER_TYPE_BUY;
+            
+            if(!OrderSend(request,result)){
+               PrintFormat("OrderSend error %d",GetLastError());  // if unable to send the request, output the error code
+            }
+            PrintFormat("retcode=%u  deal=%I64u  order=%I64u",result.retcode,result.deal,result.order);
+            
+            if(PositionsTotal() % 2 == 0) {
+               NextSellPrice = LastestSellPrice - (RiskPips / 10000);
+            }
+            
+            //Print("NextBuyPrice"+NextBuyPrice);    
+         }     
+      }
+   }
+}
